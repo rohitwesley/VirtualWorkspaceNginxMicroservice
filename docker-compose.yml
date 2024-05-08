@@ -1,0 +1,35 @@
+
+version: '3.9'
+
+services:
+  # @brief Template microserver service
+  template-microserver:
+    build: 
+      context: .
+    # @brief Container name
+    container_name: template-microserver
+    # @brief Use the custom image
+    image: "vw-template-microservice"
+    # @brief Port mapping
+    ports:
+      - 3000:3000
+    # @brief Load environment variables from the .env file
+    env_file:
+      - ./.env
+    # @brief Restart policy
+    restart: always
+    # @brief Define the network used by the service
+    networks:
+      - vw-network-cluster
+    
+
+# @brief Network definition
+networks:
+  vw-network-cluster:
+    external: true
+
+# @brief Volume definition for persistent data storage
+volumes:
+  template-volume:
+    driver: local
+
