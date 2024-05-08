@@ -36,7 +36,7 @@ config/ssl-*.pem
 .DS_Store
 Thumbs.db
 
-# Ignore local microservers
+# Ignore local microserver folders
 ssl/
 media/
 DBfile/
@@ -44,7 +44,10 @@ DBarchive/
 DBimage/
 DBvideo/
 
-# Ignore local unity assets
+# Ignore local Python folders
+flagged/
+
+# Ignore local unity assets folders
 Art/
 
 # Blender cash
