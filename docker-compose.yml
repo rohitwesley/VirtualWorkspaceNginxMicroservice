@@ -1,20 +1,24 @@
 services:
-  nginx-microservice:
+  nginx:
     build:
       context: .
       dockerfile: Dockerfile.nginx
+      # @brief Load environment variables from the .env as arguments to use to build in the Dockerfile
+      args:
+        - CONDA_ENV_NAME=${CONDA_ENV_NAME}
     # @brief Container name
     container_name: nginx-microserver
     # @brief Use the custom image
-    image: "nginx-microservice"
+    image: "vw-nginx-microservice"
     ports:
-      - "80:80"   # HTTP
-      # - "443:443" # HTTPS
-      # - "8080:8080" # HTTP
-      # - "8443:8443" # HTTPS
+      - "${NGINX_PORT_HTTP}:${NGINX_PORT_HTTP}"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    # @brief Load environment variables from the .env file
+      # Mount Local Media folder as as media volume
+      - ${MEDIA_PATH}:${MEDIA_VOL}
+      # Mount Local SSL folder as as media volume
+      - ${SSL_PATH}:${SSL_VOL}
+      - ${SSL_PATH}/letsencrypt:/etc/letsencrypt
+      - ${SSL_PATH}/letsencrypt:/var/www/certbot
     env_file:
       - .env
     # @brief Restart policy
@@ -23,6 +27,7 @@ services:
     networks:
       - vw-network-cluster
 
+# @brief Network definition
 networks:
   vw-network-cluster:
     external: true
