@@ -57,7 +57,7 @@ http {
 EOL
 
 # Generate NGINX configuration file from template
-cat <<EOL > $NGINX_CONF_TEMPLATE
+cat <<EOL > $NGINX_CONF
 events {
     worker_connections 1024;
 }
@@ -71,17 +71,18 @@ http {
     server {
         listen ${NGINX_PORT_HTTP};
         server_name ${DOMAIN_NAME};
+        return 301 https://$host$request_uri;
+    }
+
+    server {
+        listen ${NGINX_PORT_HTTPS} ssl;
+        server_name ${DOMAIN_NAME};
+
+        ssl_password_file /etc/nginx/ssl-password.pass;
+        ssl_certificate ${SSL_VOL}/letsencrypt/live/${DOMAIN_NAME}/fullchain.pem;
+        ssl_certificate_key ${SSL_VOL}/letsencrypt/live/${DOMAIN_NAME}/privkey.pem;
 
         location / {
-            root /usr/share/nginx/html;
-            index index.html index.htm;
-        }
-
-        location /.well-known/acme-challenge/ {
-            root /var/www/certbot;
-        }
-        
-        location /streams {
             proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT};
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
@@ -89,7 +90,19 @@ http {
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
 
-        location /ml {
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+        
+        location /ca/streams {
+            proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT};
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+
+        location /ca/ml {
             proxy_pass http://${ML_HOST}:${ML_PORT};
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
@@ -97,48 +110,32 @@ http {
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
     }
-
-    server {
-        listen ${NGINX_PORT_HTTPS} ssl;
-        server_name ${DOMAIN_NAME};
-
-        ssl_certificate /etc/nginx/ssl/$SSL_CERT;
-        ssl_certificate_key /etc/nginx/ssl/$SSL_KEY;
-
-        location / {
-            root /usr/share/nginx/html;
-            index index.html index.htm;
-        }
-    }
 }
 EOL
-
-# Replace placeholders in nginx.conf.template and create nginx.conf
-envsubst < $NGINX_CONF_TEMPLATE > $NGINX_CONF
 
 # Create Dockerfile for NGINX with Certbot
 cat <<EOL > $DOCKERFILE
 FROM nginx:latest
 RUN apt-get update && apt-get install -y certbot python3-certbot-nginx
-COPY nginx.temp.conf /etc/nginx/nginx.temp.conf
 COPY nginx.conf /etc/nginx/nginx.conf
+RUN echo $SSL_PASS >> /etc/nginx/ssl-password.pass
 EXPOSE $NGINX_PORT_HTTP $NGINX_PORT_HTTPS
 EOL
 
 # Ensure the Docker network exists
 docker network inspect vw-network-cluster >/dev/null 2>&1 || docker network create vw-network-cluster
 
-# Build and run Docker container using docker-compose
-docker-compose up -d --build
-# docker-compose build --no-cache && docker-compose up --force-recreate -d
+# Build and run Docker container using docker compose
+docker compose up -d --build
+# docker compose build --no-cache && docker compose up --force-recreate -d
 
 # Temporarily use the temp configuration to serve the challenge
 docker cp nginx.temp.conf nginx-microserver:/etc/nginx/nginx.conf
-docker-compose restart nginx
+docker compose restart nginx
 
 # Obtain SSL certificate with Certbot, using a volume for Let's Encrypt
-# docker-compose run --rm nginx certbot certonly --webroot --webroot-path=/usr/share/nginx/html -d ${DOMAIN_NAME} --non-interactive --agree-tos --email ${DOMAIN_EMAILID}
-docker-compose run --rm -v ${SSL_PATH}/letsencrypt:/var/www/certbot nginx certbot certonly --webroot --webroot-path=/var/www/certbot -d ${DOMAIN_NAME} --non-interactive --agree-tos --email ${DOMAIN_EMAILID}
+# docker compose run --rm nginx certbot certonly --webroot --webroot-path=/usr/share/nginx/html -d ${DOMAIN_NAME} --non-interactive --agree-tos --email ${DOMAIN_EMAILID}
+docker compose run --rm -v ${SSL_PATH}/letsencrypt:/var/www/certbot nginx certbot certonly --webroot --webroot-path=/var/www/certbot -d ${DOMAIN_NAME} --non-interactive --agree-tos --email ${DOMAIN_EMAILID}
 
 # Check if Let's Encrypt files were created successfully
 if [ ! -d "$LETSENCRYPT_DIR/live/$DOMAIN_NAME" ]; then
@@ -153,7 +150,7 @@ cp -r "$LETSENCRYPT_DIR/renewal/$DOMAIN_NAME.conf" "$SSL_PATH/"
 
 # Restart NGINX to apply the new certificate
 docker cp $NGINX_CONF nginx-microserver:/etc/nginx/nginx.conf
-docker-compose restart nginx
+docker compose restart nginx
 
 echo "Setup complete. NGINX is running on ports $NGINX_PORT_HTTP and $NGINX_PORT_HTTPS for domain $DOMAIN_NAME with SSL."
 echo "NGINX setup for HTTPS is complete. Verify by accessing https://${DOMAIN_NAME}."
