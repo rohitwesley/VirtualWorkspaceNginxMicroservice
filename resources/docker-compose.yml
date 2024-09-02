@@ -28,6 +28,25 @@ services:
     networks:
       - vw-network-cluster
 
+  ngrok:
+    build:
+      context: .
+      dockerfile: Dockerfile.ngrok
+    container_name: ngrok-container
+    ports:
+      - "4040:4040"
+      - "${NGROK_HTTP_PORT}:${NGROK_PORT}"
+    volumes:
+      - ./.env:/root/.ngrok2/ngrok.yml
+    env_file:
+      - .env
+    # @brief Restart policy
+    restart: always
+    # @brief Define the network used by the service
+    networks:
+      - vw-network-cluster
+
+# @brief Network definition
 networks:
   vw-network-cluster:
     external: true
