@@ -94,7 +94,7 @@ http {
             root /var/www/certbot;
         }
         
-        location /ca/streams {
+        location /ca/streams/ {
             proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT};
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
@@ -102,7 +102,7 @@ http {
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
 
-        location /ca/ml {
+        location /ca/ml/ {
             proxy_pass http://${ML_HOST}:${ML_PORT};
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;

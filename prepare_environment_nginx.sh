@@ -55,7 +55,7 @@ http {
         }
 
         # Handle /streams specifically
-        location /ca/streams {
+        location /ca/streams/ {
             # Handle all other /streams requests
             proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT}/;
             proxy_set_header Host \$host;
@@ -65,7 +65,7 @@ http {
         }
 
         # Handle /ml specifically
-        location /ca/ml {
+        location /ca/ml/ {
             proxy_pass http://${ML_HOST}:${ML_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
