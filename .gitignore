@@ -29,6 +29,10 @@
 .env
 .env.master
 
+# Ignore nginx config
+nginx.conf
+Dockerfile.nginx
+
 # Ignore SSL certificates
 config/ssl-*.pem
 
