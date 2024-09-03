@@ -55,9 +55,9 @@ http {
         }
 
         # Handle /streams specifically
-        location /streams {
+        location /ca/streams {
             # Handle all other /streams requests
-            proxy_pass http://dashboard-microserver:${STREAMS_PORT}/;
+            proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -65,8 +65,8 @@ http {
         }
 
         # Handle /ml specifically
-        location /ml {
-            proxy_pass http://python-microserver:${ML_PORT}/;
+        location /ca/ml {
+            proxy_pass http://${ML_HOST}:${ML_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -90,9 +90,9 @@ docker network inspect vw-network-cluster >/dev/null 2>&1 || docker network crea
 # Prompt user for building and running Docker containers
 read -p "Do you want to build and run the Docker containers now? (y/n): " build_and_run
 if [[ "$build_and_run" == "y" ]]; then
-    docker-compose down
-    docker-compose build --no-cache
-    docker-compose up --force-recreate -d
+    docker compose down
+    docker compose build --no-cache
+    docker compose up --force-recreate -d
 
     echo "Waiting for nginx-microserver to initialize..."
     sleep 30
@@ -112,7 +112,7 @@ if [[ "$build_and_run" == "y" ]]; then
     docker logs nginx-microserver
 
 else
-    echo "Docker containers setup is complete. You can build and run them later using docker-compose commands."
+    echo "Docker containers setup is complete. You can build and run them later using docker compose commands."
 fi
 
 echo "NGINX setup for HTTP only is complete. Verify by accessing http://${NGINX_HOST}:${NGINX_PORT_HTTP}."
