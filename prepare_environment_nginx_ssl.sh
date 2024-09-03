@@ -8,6 +8,7 @@ set +a
 # Variables
 DOMAIN_NAME=$DOMAIN_NAME
 DOMAIN_EMAILID=$DOMAIN_EMAILID
+DOMAIN_SERVERID=$DOMAIN_SERVERID
 NGINX_HOST=$NGINX_HOST # Replace with your actual public IP
 NGINX_PORT_HTTP=$NGINX_PORT_HTTP
 NGINX_PORT_HTTPS=$NGINX_PORT_HTTPS
@@ -82,6 +83,7 @@ http {
         ssl_certificate ${SSL_VOL}/letsencrypt/live/${DOMAIN_NAME}/fullchain.pem;
         ssl_certificate_key ${SSL_VOL}/letsencrypt/live/${DOMAIN_NAME}/privkey.pem;
 
+        # Handle /dashboard website specifically
         location / {
             proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT};
             proxy_set_header Host \$host;
@@ -94,7 +96,8 @@ http {
             root /var/www/certbot;
         }
         
-        location /ca/streams/ {
+        # Handle /streams node specifically (/ca/streaams)
+        location $DOMAIN_SERVERID/streams/ {
             proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT};
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
@@ -102,7 +105,8 @@ http {
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
 
-        location /ca/ml/ {
+        # Handle /ml python specifically (/ca/ml)
+        location $DOMAIN_SERVERID/ml/ {
             proxy_pass http://${ML_HOST}:${ML_PORT};
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;

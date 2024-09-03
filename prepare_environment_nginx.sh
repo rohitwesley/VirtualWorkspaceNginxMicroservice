@@ -8,6 +8,7 @@ set +a
 # Variables
 DOMAIN_NAME=$DOMAIN_NAME
 DOMAIN_EMAILID=$DOMAIN_EMAILID
+DOMAIN_SERVERID=$DOMAIN_SERVERID
 NGINX_HOST=$NGINX_HOST # Replace with your actual public IP
 NGINX_PORT_HTTP=$NGINX_PORT_HTTP
 NGINX_PORT_HTTPS=$NGINX_PORT_HTTPS
@@ -55,7 +56,7 @@ http {
         }
 
         # Handle /streams specifically
-        location /ca/streams/ {
+        location $DOMAIN_SERVERID/streams/ {
             # Handle all other /streams requests
             proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT}/;
             proxy_set_header Host \$host;
@@ -65,7 +66,7 @@ http {
         }
 
         # Handle /ml specifically
-        location /ca/ml/ {
+        location $DOMAIN_SERVERID/ml/ {
             proxy_pass http://${ML_HOST}:${ML_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
