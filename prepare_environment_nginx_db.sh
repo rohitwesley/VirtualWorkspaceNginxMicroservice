@@ -19,6 +19,18 @@ SSL_CERT="$SSL_PATH/$SSL_CERT"
 NGINX_CONF="nginx.conf"
 DOCKERFILE="Dockerfile.nginx"
 
+echo "TODO: Need to handle linking of redis database to redis insight using this example :https://github.com/RedisInsight/RedisInsight-reverse-proxy/blob/main/nginx-subpath-proxy/docker-compose.yml"
+sleep 10
+
+# Prompt the user to continue or stop
+read -p "Do you wish to continue? (y/n) " answer
+
+case $answer in
+    [Yy]* ) echo "Continuing the script...";;
+    [Nn]* ) echo "Stopping the script..."; exit;;
+    * ) echo "Invalid input, exiting."; exit;;
+esac
+
 # Check for required environment variables
 if [ -z "$DOMAIN_EMAILID" ] || [ -z "$NGINX_PORT_HTTP" ] || [ -z "$NGINX_PORT_HTTPS" ] || [ -z "$SSL_PATH" ]; then
     echo "Required environment variables are missing in the .env file."
@@ -51,24 +63,57 @@ http {
             root /usr/share/nginx/html;
             index index.html index.htm;
         }
+        
+        # Reverse proxy for RedisInsight main dashboard microserver
+        location /db/ {
+            # Strips the /db prefix before proxying to Node.js
+            rewrite ^/db/(.*)$ /\$1 break;
 
-        # Reverse proxy for the dashboard microserver (e.g., for streaming)
-        location /streams/ {
-            proxy_pass http://dashboard-microserver:${STREAMS_PORT}/;
+            # Ensure the proxy redirects exactly to your Node.js server
+            proxy_pass http://redisinsight-microserver:5540/;
+            proxy_http_version 1.1;
+
+            # Headers critical for WebSocket support
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+            proxy_cache_bypass \$http_upgrade;
+        }
+
+        # Correct handling of static content
+        location /static/ {
+            # Assuming static content is served by RedisInsight
+            proxy_pass http://redisinsight-microserver:5540/static/;
+            proxy_http_version 1.1;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
 
-        # Reverse proxy for the machine learning microserver
-        location /ml/ {
-            proxy_pass http://python-microserver:${ML_PORT}/;
+        # General API handling
+        location /api/ {
+            proxy_pass http://redisinsight-microserver:5540/api/;
+            proxy_http_version 1.1;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
+
+        # Assets handling
+        location /assets/ {
+            proxy_pass http://redisinsight-microserver:5540/assets/;
+            proxy_http_version 1.1;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+
 
     }
 }
