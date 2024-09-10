@@ -45,36 +45,45 @@ http {
         listen ${NGINX_PORT_HTTP};
         server_name ${NGINX_HOST};
 
+        # Handle nginx default website reverse proxy
         location / {
             root /usr/share/nginx/html;
             index index.html index.htm;
         }
 
-        location /.well-known/acme-challenge/ {
-            root /var/www/certbot;
-        }
-
-        # Handle /streams specifically
-        location /streams {
+        # Handle streams node reverse proxy (/streaams/)
+        location /streams/ {
             # Handle all other /streams requests
-            proxy_pass http://dashboard-microserver:${STREAMS_PORT}/;
+            proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
 
-        # Handle /ml specifically
-        location /ml {
-            proxy_pass http://python-microserver:${ML_PORT}/;
+        # Handle ml python reverse proxy (/ml/)
+        location /ml/ {
+            proxy_pass http://${ML_HOST}:${ML_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
+
+        # Handle db redis reverse proxy (/db/)
+        location /db/ {
+            proxy_pass http://${REDIS_HOST}:5540/;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+        
     }
 }
 EOL
+
+echo "Generated NGINX configuration file for Remote Server(HTTP)"
 
 # Create Dockerfile for NGINX
 cat <<EOL > $DOCKERFILE
@@ -84,35 +93,37 @@ COPY nginx.conf /etc/nginx/nginx.conf
 EXPOSE $NGINX_PORT_HTTP $NGINX_PORT_HTTPS
 EOL
 
+echo "Created Dockerfile for NGINX"
+
 # Ensure the Docker network exists
 docker network inspect vw-network-cluster >/dev/null 2>&1 || docker network create vw-network-cluster
 
-# Prompt user for building and running Docker containers
-read -p "Do you want to build and run the Docker containers now? (y/n): " build_and_run
-if [[ "$build_and_run" == "y" ]]; then
-    docker-compose down
-    docker-compose build --no-cache
-    docker-compose up --force-recreate -d
+echo "Building Docker Container"
+# Build and run Docker container using docker compose
+docker compose build --no-cache && docker compose up --force-recreate -d
 
-    echo "Waiting for nginx-microserver to initialize..."
-    sleep 30
+echo "Waiting for nginx-microserver to initialize..."
+sleep 30
     
+# Prompt user for building and running Docker containers
+read -p "Do you want to test the Docker containers now? (y/n): " build_and_run
+if [[ "$build_and_run" == "y" ]]; then
     echo "Testing connectivity to microservices..."
     docker exec -it nginx-microserver /bin/bash -c "
-    echo 'Pinging dashboard-microserver...'
-    ping -c 4 dashboard-microserver
-    echo 'Pinging python-microserver...'
-    ping -c 4 python-microserver
-    echo 'Curl to dashboard-microserver...'
-    curl http://dashboard-microserver:${STREAMS_PORT}
-    echo 'Curl to python-microserver...'
-    curl http://python-microserver:${ML_PORT}
+        echo 'Pinging dashboard-microserver...'
+        ping -c 4 dashboard-microserver
+        echo 'Pinging python-microserver...'
+        ping -c 4 python-microserver
+        echo 'Curl to dashboard-microserver...'
+        curl http://dashboard-microserver:${STREAMS_PORT}
+        echo 'Curl to python-microserver...'
+        curl http://python-microserver:${ML_PORT}
     "
 
     docker logs nginx-microserver
 
 else
-    echo "Docker containers setup is complete. You can build and run them later using docker-compose commands."
+    echo "Docker containers setup is complete. You can build and run them later using docker compose commands."
 fi
 
 echo "NGINX setup for HTTP only is complete. Verify by accessing http://${NGINX_HOST}:${NGINX_PORT_HTTP}."

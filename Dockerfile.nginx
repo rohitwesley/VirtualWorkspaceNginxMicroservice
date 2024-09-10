@@ -1,4 +1,0 @@
-FROM nginx:latest
-RUN apt-get update && apt-get install -y certbot python3-certbot-nginx curl iputils-ping
-COPY nginx.conf /etc/nginx/nginx.conf
-EXPOSE 9081 444

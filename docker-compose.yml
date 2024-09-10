@@ -3,9 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.nginx
-      # @brief Load environment variables from the .env as arguments to use to build in the Dockerfile
-      args:
-        - CONDA_ENV_NAME=${CONDA_ENV_NAME}
     # @brief Container name
     container_name: nginx-microserver
     # @brief Use the custom image
@@ -20,6 +17,8 @@ services:
       - ${SSL_PATH}:${SSL_VOL}
       - ${SSL_PATH}/letsencrypt:/etc/letsencrypt
       - ${SSL_PATH}/letsencrypt:/var/www/certbot
+      - redis-microserver_redis-volume:/redis-data
+      - redis-microserver_redisinsight-data:/usr/src/app/redisinsight
     env_file:
       - .env
     # @brief Restart policy
@@ -30,4 +29,10 @@ services:
 
 networks:
   vw-network-cluster:
+    external: true
+
+volumes:
+  redis-microserver_redis-volume:
+    external: true
+  redis-microserver_redisinsight-data:
     external: true
