@@ -6,6 +6,7 @@ read SERVER_TYPE
 
 # Convert user input to lowercase for consistency
 SERVER_TYPE=$(echo "$SERVER_TYPE" | tr '[:upper:]' '[:lower:]')
+NGINX_CONF="nginx.conf"
 
 if [ "$SERVER_TYPE" == "main" ]; then
     # Main server setup
@@ -22,8 +23,8 @@ if [ "$SERVER_TYPE" == "main" ]; then
 
     # Ensure SSH server is running
     echo "Ensuring SSH server is running..."
-    sudo systemctl enable ssh
-    sudo systemctl start ssh
+    # sudo systemctl enable ssh
+    # sudo systemctl start ssh
 
     # List all available users
     echo "Available users on the system:"
@@ -51,12 +52,44 @@ if [ "$SERVER_TYPE" == "main" ]; then
     # Automatically fetch the public IP address of the main server
     MAIN_SERVER_IP=$(curl -s http://icanhazip.com)
     echo "Detected Main Server IP: $MAIN_SERVER_IP"
-
-    # Display the SSH user and IP address for the user to use in remote server setup
+    
+    # Completion message
     echo "Main server setup complete. Use SSH user info '$SSH_USER@$MAIN_SERVER_IP' for setting up the remote server."
-
-    # Provide instructions for the remote server setup
     echo "Proceed to configure the remote server. Use the SSH user information where required to establish the SSH tunnel."
+
+    echo "Are you ready to continue with the docker build bang the keyboard and hit Enter."
+    read
+
+    # Ask for the custom route for SSH tunneling
+    echo "Enter the route to handle SSH tunneling (e.g., '/mobile/'): "
+    read SSH_ROUTE
+
+    echo "Enter the Local Port on the Main server to forward to (e.g., 8080):"
+    read LOCAL_FORWARD_PORT
+
+    # Update NGINX configuration
+    sed -i "/# DO NOT REMOVE THIS COMMENT script inserts ssh tunelling here/a \\
+        location \/$SSH_ROUTE\/ { \\
+            proxy_pass http://localhost:$LOCAL_FORWARD_PORT\/; # Forward to SSH tunnel local port \\
+            proxy_set_header Host \$host; \\
+            proxy_set_header X-Real-IP \$remote_addr; \\
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; \\
+            proxy_set_header X-Forwarded-Proto \$scheme; \\
+        }" $NGINX_CONF
+    echo "NGINX configuration updated to include SSH tunneling."
+
+    # Restart NGINX Docker container
+    echo "Restarting NGINX Docker container..."
+    # docker compose up -d --build
+    docker compose build --no-cache && docker compose up --force-recreate -d
+
+    # Restart NGINX to apply the new certificate
+    echo "Restart NGINX to apply the new certificate"
+    docker cp $NGINX_CONF nginx-microserver:/etc/nginx/nginx.conf
+    docker compose restart nginx
+
+    echo "Setup complete. NGINX is running on ports $NGINX_PORT_HTTP and $NGINX_PORT_HTTPS for domain $DOMAIN_NAME with SSL."
+    echo "NGINX setup for HTTPS is complete. Verify by accessing https://${DOMAIN_NAME}."
 
 elif [ "$SERVER_TYPE" == "remote" ]; then
     # Remote server setup

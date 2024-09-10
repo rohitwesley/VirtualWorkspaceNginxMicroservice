@@ -74,7 +74,7 @@ http {
 
         # Handle dashboard website reverse proxy (/dashboard)
         location / {
-            proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT};
+            proxy_pass http://dashboard-microserver:${STREAMS_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -83,7 +83,7 @@ http {
         
         # Handle streams node reverse proxy (/serverid/streaams)
         location $DOMAIN_SERVERID/streams/ {
-            proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT};
+            proxy_pass http://dashboard-microserver:${STREAMS_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -92,13 +92,14 @@ http {
 
         # Handle ml python reverse proxy (/serverid/ml)
         location $DOMAIN_SERVERID/ml/ {
-            proxy_pass http://${ML_HOST}:${ML_PORT};
+            proxy_pass http://python-microserver:${ML_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
 
+        # DO NOT REMOVE THIS COMMENT script inserts ssh tunelling here
     }
 }
 EOL
@@ -127,7 +128,7 @@ docker compose up -d --build
 
 # Temporarily use the temp configuration to serve the challenge
 echo "Temporarily use the temp configuration to serve the challenge"
-docker cp nginx.temp.conf nginx-microserver:/etc/nginx/nginx.conf
+docker cp nginx.conf nginx-microserver:/etc/nginx/nginx.conf
 docker compose restart nginx
 
 # Obtain SSL certificate with Certbot, using a volume for Let's Encrypt
