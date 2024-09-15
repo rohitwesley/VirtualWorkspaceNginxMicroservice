@@ -1,12 +1,18 @@
 #!/bin/bash
 
+# Load environment variables from .env file
+set -a
+source .env
+set +a
+
+NGINX_CONF="nginx.conf"
+
 # Prompt the user to specify which server is being set up
 echo "Is this the Remote Server or the Main Server? (Enter 'Remote' or 'Main')"
 read SERVER_TYPE
 
 # Convert user input to lowercase for consistency
 SERVER_TYPE=$(echo "$SERVER_TYPE" | tr '[:upper:]' '[:lower:]')
-NGINX_CONF="nginx.conf"
 
 if [ "$SERVER_TYPE" == "main" ]; then
     # Main server setup
@@ -31,8 +37,9 @@ if [ "$SERVER_TYPE" == "main" ]; then
     cut -d: -f1 /etc/passwd | sort
 
     # Ask user to select one of the existing users or create a new one
-    echo "Enter the username to use for SSH access or type 'new' to create a new user:"
+    echo "Enter the username (e.g., 'wesley') to use for SSH access or type 'new' to create a new user:"
     read SSH_USER
+    SSH_USER=${SSH_USER:-wesley}
 
     if [ "$SSH_USER" == "new" ]; then
         echo "Enter new username for SSH access:"
@@ -48,29 +55,27 @@ if [ "$SERVER_TYPE" == "main" ]; then
             exit 1
         fi
     fi
-
-    # Automatically fetch the public IP address of the main server
-    MAIN_SERVER_IP=$(curl -s http://icanhazip.com)
-    echo "Detected Main Server IP: $MAIN_SERVER_IP"
     
     # Completion message
-    echo "Main server setup complete. Use SSH user info '$SSH_USER@$MAIN_SERVER_IP' for setting up the remote server."
+    echo "Main server setup complete. Use SSH user info '$SSH_USER@$DOMAIN_NAME' for setting up the remote server."
     echo "Proceed to configure the remote server. Use the SSH user information where required to establish the SSH tunnel."
 
-    echo "Are you ready to continue with the docker build bang the keyboard and hit Enter."
+    echo "Are you ready to continue with the docker build? If so, bang the keyboard and hit Enter."
     read
 
     # Ask for the custom route for SSH tunneling
     echo "Enter the route to handle SSH tunneling (e.g., '/mobile/'): "
     read SSH_ROUTE
+    SSH_ROUTE=${SSH_ROUTE:-mobile}
 
     echo "Enter the Local Port on the Main server to forward to (e.g., 8080):"
     read LOCAL_FORWARD_PORT
+    LOCAL_FORWARD_PORT=${LOCAL_FORWARD_PORT:-8080}
 
     # Update NGINX configuration
     sed -i "/# DO NOT REMOVE THIS COMMENT script inserts ssh tunelling here/a \\
         location \/$SSH_ROUTE\/ { \\
-            proxy_pass http://localhost:$LOCAL_FORWARD_PORT\/; # Forward to SSH tunnel local port \\
+            proxy_pass http://$SSH_TUNNEL_HOST:$LOCAL_FORWARD_PORT\/; # Forward to SSH tunnel local port \\
             proxy_set_header Host \$host; \\
             proxy_set_header X-Real-IP \$remote_addr; \\
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; \\
