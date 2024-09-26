@@ -110,8 +110,6 @@ if [ "$SERVER_TYPE" == "main" ]; then
     echo "Ensuring SSH server is running..."
     case "$OS_TYPE" in
         ubuntu|debian|fedora|centos|rhel)
-            sudo systemctl enable ssh
-            sudo systemctl start ssh
             ;;
         macos)
             # SSH server is managed via systemsetup on macOS
@@ -195,26 +193,14 @@ if [ "$SERVER_TYPE" == "main" ]; then
     LOCAL_FORWARD_PORT=${LOCAL_FORWARD_PORT:-8080}
 
     # Update NGINX configuration
-    # Handle macOS sed compatibility
-    if [ "$OS_TYPE" == "macos" ]; then
-        sed -i '' "/# DO NOT REMOVE THIS COMMENT script inserts ssh tunelling here/a \\
-            location \/$SSH_ROUTE\/ { \\
-                proxy_pass http://$SSH_TUNNEL_HOST:$LOCAL_FORWARD_PORT\/; # Forward to SSH tunnel local port \\
-                proxy_set_header Host \$host; \\
-                proxy_set_header X-Real-IP \$remote_addr; \\
-                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; \\
-                proxy_set_header X-Forwarded-Proto \$scheme; \\
-            }" "$NGINX_CONF"
-    else
-        sed -i "/# DO NOT REMOVE THIS COMMENT script inserts ssh tunelling here/a \\
-            location \/$SSH_ROUTE\/ { \\
-                proxy_pass http://$SSH_TUNNEL_HOST:$LOCAL_FORWARD_PORT\/; # Forward to SSH tunnel local port \\
-                proxy_set_header Host \$host; \\
-                proxy_set_header X-Real-IP \$remote_addr; \\
-                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; \\
-                proxy_set_header X-Forwarded-Proto \$scheme; \\
-            }" "$NGINX_CONF"
-    fi
+    sed -i "/# DO NOT REMOVE THIS COMMENT script inserts ssh tunelling here/a \\
+        location \/$SSH_ROUTE\/ { \\
+            proxy_pass http://$SSH_TUNNEL_HOST:$LOCAL_FORWARD_PORT\/; # Forward to SSH tunnel local port \\
+            proxy_set_header Host \$host; \\
+            proxy_set_header X-Real-IP \$remote_addr; \\
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; \\
+            proxy_set_header X-Forwarded-Proto \$scheme; \\
+        }" "$NGINX_CONF"
     echo "NGINX configuration updated to include SSH tunneling."
 
     # Restart NGINX Docker container
