@@ -1,0 +1,50 @@
+# Automate Line Ending Conversion with .gitattributes
+* text=auto eol=lf
+
+# Apps
+.exe -text
+
+# Images
+*.png -text
+*.jpg -text
+*.jpeg -text
+*.tif -text
+*.tiff -text
+*.tga -text
+*.psd -text
+*.gif -text
+*.bmp -text
+*.exr -text
+*.dds -text
+*.hdr -text
+*.svg -text
+
+# 3D Models
+*.fbx -text
+*.obj -text
+*.dae -text
+*.3ds -text
+*.blender -text
+*.ma -text
+*.lxo -text
+*.lwo -text
+
+# Videos
+*.mp4 -text
+*.avi -text
+*.mov -text
+*.mpg -text
+*.mpeg -text
+
+# Audio
+*.mp3 -text
+*.wav -text
+*.ogg -text
+*.aif -text
+*.aiff -text
+*.flac -text
+
+# Fonts
+*.otf -text
+*.ttf -text
+*.fnt -text

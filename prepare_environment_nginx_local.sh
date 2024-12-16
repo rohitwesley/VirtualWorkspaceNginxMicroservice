@@ -54,7 +54,7 @@ http {
         # Handle streams node reverse proxy (/streaams/)
         location /streams/ {
             # Handle all other /streams requests
-            proxy_pass http://${STREAMS_HOST}:${STREAMS_PORT}/;
+            proxy_pass http://${STREAMS_HOST}:${MEDIA_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -115,7 +115,7 @@ if [[ "$build_and_run" == "y" ]]; then
         echo 'Pinging python-microserver...'
         ping -c 4 python-microserver
         echo 'Curl to dashboard-microserver...'
-        curl http://dashboard-microserver:${STREAMS_PORT}
+        curl http://dashboard-microserver:${MEDIA_PORT}
         echo 'Curl to python-microserver...'
         curl http://python-microserver:${ML_PORT}
     "

@@ -29,7 +29,7 @@ fi
 mkdir -p "$SSL_PATH"
 mkdir -p "$LETSENCRYPT_DIR"
 
-# Generate NGINX configuration file for HTTP only
+# Generate NGINX configuration file from template for HTTP only
 cat <<EOL > $NGINX_CONF
 events {
     worker_connections 1024;
@@ -46,15 +46,31 @@ http {
         listen ${NGINX_PORT_HTTP};
         server_name ${NGINX_HOST};
 
-        # Default server location
-        location / {
-            root /usr/share/nginx/html;
+        # Handle NGINX Default server location for testing (/nginx)
+        # Serve static files at /nginx
+        location /nginx/ {
+            alias /usr/share/nginx/html/;
             index index.html index.htm;
+            
+            # Optional: Enable autoindex if you want to list files
+            autoindex on;
+        }
+        # Optional: Handle exact /nginx without trailing slash
+        location = /nginx {
+            return 301 /nginx/;
+        }
+        # Handle dashboard website reverse proxy (/dashboard)
+        location / {
+            proxy_pass http://${NGINX_HOST}:${MEDIA_PORT}/;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
         }
 
         # Reverse proxy for the dashboard microserver (e.g., for streaming)
         location /streams/ {
-            proxy_pass http://dashboard-microserver:${STREAMS_PORT}/;
+            proxy_pass http://${NGINX_HOST}:${MEDIA_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -63,7 +79,7 @@ http {
 
         # Reverse proxy for the machine learning microserver
         location /ml/ {
-            proxy_pass http://python-microserver:${ML_PORT}/;
+            proxy_pass http://${NGINX_HOST}:${ML_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -106,7 +122,7 @@ if [[ "$build_and_run" == "y" ]]; then
         echo 'Pinging python-microserver...'
         ping -c 4 python-microserver
         echo 'Curl to dashboard-microserver...'
-        curl http://dashboard-microserver:${STREAMS_PORT}
+        curl http://dashboard-microserver:${MEDIA_PORT}
         echo 'Curl to python-microserver...'
         curl http://python-microserver:${ML_PORT}
     "
