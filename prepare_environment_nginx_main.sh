@@ -50,7 +50,7 @@ http {
     sendfile        on;
     keepalive_timeout  65;
 
-    # Handle http request forwarding them to the https server
+    # Handle http request forwarding them to the https server (may need to get commented out for certbot)
     server {
         listen ${NGINX_PORT_HTTP};
         server_name ${DOMAIN_NAME};
@@ -60,6 +60,10 @@ http {
     # Handle https request
     server {
         listen ${NGINX_PORT_HTTPS} ssl;
+        listen ${REDIS_PORT};
+        # Uncomment this line when recertifying because certbot needs to listen on HTTP
+        # listen ${NGINX_PORT_HTTP};
+
         server_name ${DOMAIN_NAME};
 
         # Handle ssl certificate
@@ -115,10 +119,12 @@ EOL
 
 echo "Generated NGINX configuration file for Main Server(HTTPS)"
 
-# Create Dockerfile for NGINX with Certbot
+# Create Dockerfile for NGINX with latest up-to-date cerbot
 cat <<EOL > $DOCKERFILE
 FROM nginx:latest
-RUN apt-get update && apt-get install -y certbot python3-certbot-nginx
+RUN apt-get update -y && apt-get -y upgrade && apt-get -y install python3 python3-pip python3-venv libaugeas0
+RUN python3 -m venv /opt/certbot/ && /opt/certbot/bin/pip install --upgrade pip
+RUN /opt/certbot/bin/pip install certbot certbot-nginx && ln -s /opt/certbot/bin/certbot /usr/bin/certbot
 COPY nginx.conf /etc/nginx/nginx.conf
 RUN echo $SSL_PASS >> /etc/nginx/ssl-password.pass
 EXPOSE $NGINX_PORT_HTTP $NGINX_PORT_HTTPS
@@ -140,10 +146,12 @@ echo "Temporarily use the temp configuration to serve the challenge"
 docker cp nginx.conf nginx-microserver:/etc/nginx/nginx.conf
 docker compose restart nginx
 
+echo "Sleeping for 10 seconds to give time for nginx to boot up and accept requests..."
+sleep 10
 # Obtain SSL certificate with Certbot, using a volume for Let's Encrypt
 echo "Obtain SSL certificate with Certbot, using a volume for Let's Encrypt"
 # docker compose run --rm nginx certbot certonly --webroot --webroot-path=/usr/share/nginx/html -d ${DOMAIN_NAME} --non-interactive --agree-tos --email ${DOMAIN_EMAILID}
-docker compose run --rm -v ${SSL_PATH}/letsencrypt:/var/www/certbot nginx certbot certonly --webroot --webroot-path=/var/www/certbot -d ${DOMAIN_NAME} --non-interactive --agree-tos --email ${DOMAIN_EMAILID}
+docker compose run --rm -v ${SSL_PATH}/letsencrypt:/var/www/certbot nginx certbot certonly --webroot -v --webroot-path=/var/www/certbot -d ${DOMAIN_NAME} --non-interactive --agree-tos --email ${DOMAIN_EMAILID}
 
 # Check if Let's Encrypt files were created successfully
 echo "Check if Let's Encrypt files were created successfully"
