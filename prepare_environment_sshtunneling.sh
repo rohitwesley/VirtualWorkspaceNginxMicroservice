@@ -1,3 +1,5 @@
+# file: prepare_environment_sshtunneling.sh
+
 #!/bin/bash
 
 # Function to detect the operating system
@@ -195,7 +197,7 @@ if [ "$SERVER_TYPE" == "main" ]; then
     # Update NGINX configuration
     sed -i "/# DO NOT REMOVE THIS COMMENT script inserts ssh tunelling here/a \\
         location \/$SSH_ROUTE\/ { \\
-            proxy_pass http://$SSH_TUNNEL_HOST:$LOCAL_FORWARD_PORT\/; # Forward to SSH tunnel local port \\
+            proxy_pass http://192.168.50.2:$LOCAL_FORWARD_PORT\/; # Forward to SSH tunnel local port \\
             proxy_set_header Host \$host; \\
             proxy_set_header X-Real-IP \$remote_addr; \\
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; \\
