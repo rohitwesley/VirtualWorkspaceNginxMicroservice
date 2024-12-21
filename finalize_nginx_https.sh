@@ -57,18 +57,26 @@ http {
             index index.html;
         }
 
-        # Reverse proxy for streams
-        location /${DOMAIN_SERVERID}/streams/ {
-            proxy_pass http://localhost:${MEDIA_PORT}/;  # Replace 9090 with appropriate forwarded port
+        # -----------------------------------
+        # Reverse Proxy for Media Microserver
+        # -----------------------------------
+        
+        # Reverse proxy for Media API
+        location /${DOMAIN_SERVERID}/media/ {
+            proxy_pass http://${LOCAL_HOST}:${MEDIA_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
-
-        # Reverse proxy for ML services
+ 
+        # -----------------------------------
+        # Reverse Proxy for ML Microserver
+        # -----------------------------------
+        
+        # Reverse proxy for ML API
         location /${DOMAIN_SERVERID}/ml/ {
-            proxy_pass http://localhost:${ML_PORT}/;  # Replace 8080 with appropriate forwarded port
+            proxy_pass http://${LOCAL_HOST}:${ML_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;

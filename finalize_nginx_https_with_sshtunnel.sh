@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# File: finalize_nginx_https.sh
+# File: finalize_nginx_https_with_sshtunnel.sh
 
 set -e
 
@@ -16,8 +16,6 @@ set +a
 : "${ML_PORT:?Missing ML_PORT}"
 : "${RUST_PORT:?Missing RUST_PORT}"
 : "${MEDIA_PORT:?Missing MEDIA_PORT}"
-: "${SSH_ROUTE:?Missing SSH_ROUTE}"
-: "${LOCAL_FORWARD_PORT:?Missing LOCAL_FORWARD_PORT}"
 
 DOMAIN_SERVERID=$DOMAIN_SERVERID
 
@@ -59,31 +57,51 @@ http {
             index index.html;
         }
 
-        # Reverse proxy for streams
-        location /${DOMAIN_SERVERID}/streams/ {
-            proxy_pass http://localhost:9090/;  # Replace 9090 with the actual LOCAL_FORWARD_PORT for streams
+        # -----------------------------------
+        # Reverse Proxy for Media Microserver
+        # -----------------------------------
+        
+        # Reverse proxy for Media API
+        location /${DOMAIN_SERVERID}/media/ {
+            proxy_pass http://${LOCAL_HOST}:${MEDIA_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
-
-        # Reverse proxy for ML services
+ 
+        # -----------------------------------
+        # Reverse Proxy for ML Microserver
+        # -----------------------------------
+        
+        # Reverse proxy for ML API
         location /${DOMAIN_SERVERID}/ml/ {
-            proxy_pass http://localhost:8080/;  # Replace 8080 with the actual LOCAL_FORWARD_PORT for ML
+            proxy_pass http://${LOCAL_HOST}:${ML_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
 
-        # Reverse proxy for SSH-tunneled services (e.g., /mobile)
-        location /${SSH_ROUTE}/ {
-            proxy_pass http://localhost:${LOCAL_FORWARD_PORT}/;  # Replace with the forwarded port for the SSH-tunneled service
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
+        # ------------------------------------------------
+        # Reverse Proxy for SSH-tunneled services
+        # ------------------------------------------------
+        
+        location /mobile/ {
+            proxy_pass  http://${LOCAL_HOST}:7070/;
+            proxy_set_header Host               \$host;
+            proxy_set_header X-Real-IP          \$remote_addr;
+            proxy_set_header X-Forwarded-For    \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto  \$scheme;
+        }
+
+        # Another remote route on :6060 for "/in/"
+        location /in/ {
+            proxy_pass  http://${LOCAL_HOST}:6060/;
+            proxy_set_header Host               \$host;
+            proxy_set_header X-Real-IP          \$remote_addr;
+            proxy_set_header X-Forwarded-For    \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto  \$scheme;
         }
 
         # DO NOT REMOVE THIS COMMENT script inserts ssh tunnelling here

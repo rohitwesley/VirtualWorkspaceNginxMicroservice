@@ -10,13 +10,14 @@ source .env
 set +a
 
 # Validate required environment variables
-: "${DOMAIN_NAME:?Missing DOMAIN_NAME}"
+: "${NGINX_HOST:?Missing NGINX_HOST}"
 : "${NGINX_PORT_HTTP:?Missing NGINX_PORT_HTTP}"
+: "${LOCAL_HOST:?Missing LOCAL_HOST}"
 : "${ML_PORT:?Missing ML_PORT}"
-: "${STREAMS_PORT:?Missing STREAMS_PORT}"
+: "${MEDIA_PORT:?Missing MEDIA_PORT}"
 
-# Optional: Set a unique identifier for the remote server if needed
-REMOTE_SERVER_ID=${REMOTE_SERVER_ID:-remote1}
+# NGINX_STATIC_DIR="http://${LOCAL_HOST}:${STREAMS_PORT}/public/"
+NGINX_STATIC_DIR="http://${LOCAL_HOST}:${ML_PORT}/public/"
 
 # Create the nginx.conf without SSL
 cat <<EOL > nginx.conf
@@ -32,30 +33,90 @@ http {
 
     server {
         listen ${NGINX_PORT_HTTP};
-        server_name ${DOMAIN_NAME};
+        server_name ${NGINX_HOST};
 
         # Default NGINX location serving index.html
         location / {
             root /usr/share/nginx/html;
             index index.html;
         }
-
-        # Reverse proxy for ML services
-        location /${REMOTE_SERVER_ID}/ml/ {
-            proxy_pass http://localhost:${ML_PORT}/;
+        
+        # -----------------------------------
+        # Reverse Proxy for Media Microserver
+        # -----------------------------------
+        
+        # Reverse proxy for Media API
+        location /media/ {
+            proxy_pass http://${LOCAL_HOST}:${MEDIA_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
 
-        # Reverse proxy for Streams services
-        location /${REMOTE_SERVER_ID}/streams/ {
-            proxy_pass http://localhost:${STREAMS_PORT}/;
+        # -----------------------------------
+        # Reverse Proxy for Media Dashboard Assets
+        # -----------------------------------
+        
+        # Reverse proxy for Media Dashboard
+        location /media/dashboard/ {
+            proxy_pass http://${LOCAL_HOST}:${MEDIA_PORT}/dashboard/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
+
+            # Additional Proxy Settings
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_buffering off;
+            proxy_request_buffering off;
+
+            # Handle subpaths like /media/dashboard/, /media/dashboard/js/, etc.
+            # Using try_files to ensure proper routing for single-page applications (if applicable)
+            try_files \$uri \$uri/ =404;
+        }
+        
+ 
+        # -----------------------------------
+        # Reverse Proxy for ML Microserver
+        # -----------------------------------
+        
+        # Reverse proxy for ML API
+        location /ml/ {
+            proxy_pass http://${LOCAL_HOST}:${ML_PORT}/;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+
+        # -----------------------------------
+        # Reverse Proxy for ML Dashboard Assets
+        # -----------------------------------
+        
+        # Reverse Proxy for ML Dashboard Templates
+        location /ml/dashboard/ {
+            proxy_pass http://${LOCAL_HOST}:${ML_PORT}/dashboard/;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+
+            # Serve index.html for directory access
+            index index.html;
+        }
+
+        # -----------------------------------
+        # Serve Static Files for ML Dashboard
+        # -----------------------------------
+        location /dashboard/template {
+            alias http://${LOCAL_HOST}:${ML_PORT}/dashboard/template;
+            try_files \$uri \$uri/ =404;
+
+            # Enable caching for static files
+            expires 30d;
+            add_header Cache-Control "public, no-transform";
         }
 
         # DO NOT REMOVE THIS COMMENT script inserts ssh tunneling here
@@ -90,5 +151,5 @@ docker compose up -d --build
 
 echo "Nginx restarted with final configuration on remote server."
 
-echo "Remote NGINX setup without SSL is complete. Verify by accessing http://${DOMAIN_NAME}."
-echo "Access microservices at http://${DOMAIN_NAME}/${REMOTE_SERVER_ID}/ml/ and http://${DOMAIN_NAME}/${REMOTE_SERVER_ID}/streams/."
+echo "Remote NGINX setup without SSL is complete. Verify by accessing http://${NGINX_HOST}."
+echo "Access microservices at http://${NGINX_HOST}/ml/ and http://${NGINX_HOST}/streams/."
