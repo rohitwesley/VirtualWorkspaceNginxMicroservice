@@ -53,30 +53,6 @@ http {
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
-
-        # -----------------------------------
-        # Reverse Proxy for Media Dashboard Assets
-        # -----------------------------------
-        
-        # Reverse proxy for Media Dashboard
-        location /media/dashboard/ {
-            proxy_pass http://${LOCAL_HOST}:${MEDIA_PORT}/dashboard/;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-
-            # Additional Proxy Settings
-            proxy_http_version 1.1;
-            proxy_set_header Connection "";
-            proxy_buffering off;
-            proxy_request_buffering off;
-
-            # Handle subpaths like /media/dashboard/, /media/dashboard/js/, etc.
-            # Using try_files to ensure proper routing for single-page applications (if applicable)
-            try_files \$uri \$uri/ =404;
-        }
-        
  
         # -----------------------------------
         # Reverse Proxy for ML Microserver
@@ -89,34 +65,6 @@ http {
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
-        }
-
-        # -----------------------------------
-        # Reverse Proxy for ML Dashboard Assets
-        # -----------------------------------
-        
-        # Reverse Proxy for ML Dashboard Templates
-        location /ml/dashboard/ {
-            proxy_pass http://${LOCAL_HOST}:${ML_PORT}/dashboard/;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-
-            # Serve index.html for directory access
-            index index.html;
-        }
-
-        # -----------------------------------
-        # Serve Static Files for ML Dashboard
-        # -----------------------------------
-        location /dashboard/template {
-            alias http://${LOCAL_HOST}:${ML_PORT}/dashboard/template;
-            try_files \$uri \$uri/ =404;
-
-            # Enable caching for static files
-            expires 30d;
-            add_header Cache-Control "public, no-transform";
         }
 
         # DO NOT REMOVE THIS COMMENT script inserts ssh tunneling here
