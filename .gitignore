@@ -33,6 +33,11 @@
 nginx.conf
 Dockerfile.nginx
 
+# Ignore redis config
+redis.conf
+Dockerfile.redis
+Dockerfile.redisinsight
+
 # Ignore SSL certificates
 config/ssl-*.pem
 

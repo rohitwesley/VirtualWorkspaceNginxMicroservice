@@ -4,10 +4,30 @@
 
 set -e
 
+# Function to prompt the user for confirmation
+confirm_overwrite() {
+    local file="$1"
+    if [ -f "$file" ]; then
+        while true; do
+            read -p "The file '$file' already exists. Do you want to override it? (y/n): " choice
+            case "$choice" in
+                y|Y ) break;;
+                n|N ) echo "Operation cancelled by the user."; exit 1;;
+                * ) echo "Please answer y (yes) or n (no).";;
+            esac
+        done
+    fi
+}
+
 # Load environment variables from .env file
-set -a
-source .env
-set +a
+if [ -f .env ]; then
+    set -a
+    source .env
+    set +a
+else
+    echo ".env file not found. Please ensure it exists and contains the required variables."
+    exit 1
+fi
 
 # Validate required environment variables
 : "${DOMAIN_NAME:?Missing DOMAIN_NAME}"
@@ -16,8 +36,11 @@ set +a
 : "${ML_PORT:?Missing ML_PORT}"
 : "${RUST_PORT:?Missing RUST_PORT}"
 : "${MEDIA_PORT:?Missing MEDIA_PORT}"
+: "${LOCAL_HOST:?Missing LOCAL_HOST}"          # Added validation for LOCAL_HOST
+: "${DOMAIN_SERVERID:?Missing DOMAIN_SERVERID}"# Ensured DOMAIN_SERVERID is validated
 
-DOMAIN_SERVERID=$DOMAIN_SERVERID
+# Confirm before overwriting nginx.conf
+confirm_overwrite "nginx.conf"
 
 # Create final nginx.conf with HTTPS and reverse proxies
 cat <<EOL > nginx.conf
@@ -92,7 +115,9 @@ echo "Final NGINX configuration with HTTPS and local reverse proxies created."
 
 # Restart NGINX to apply final config
 # docker compose up -d --build
-docker compose down && docker compose build --no-cache && docker compose up --force-recreate -d
+docker compose down
+docker compose build --no-cache
+docker compose up --force-recreate -d
 docker compose restart nginx
 
 echo "Nginx restarted with final HTTPS configuration."

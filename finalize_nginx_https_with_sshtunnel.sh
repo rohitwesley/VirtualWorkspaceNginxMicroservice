@@ -19,8 +19,24 @@ set +a
 
 DOMAIN_SERVERID=$DOMAIN_SERVERID
 
+# Check if nginx.conf exists and prompt for overwrite confirmation
+NGINX_CONF_PATH="nginx.conf"
+
+if [ -f "$NGINX_CONF_PATH" ]; then
+    read -p "The file '$NGINX_CONF_PATH' already exists. Do you want to overwrite it? (y/N): " confirm
+    case "$confirm" in
+        [yY][eE][sS]|[yY])
+            echo "Overwriting '$NGINX_CONF_PATH'."
+            ;;
+        *)
+            echo "Operation cancelled. '$NGINX_CONF_PATH' was not modified."
+            exit 1
+            ;;
+    esac
+fi
+
 # Create final nginx.conf with HTTPS and reverse proxies
-cat <<EOL > nginx.conf
+cat <<EOL > "$NGINX_CONF_PATH"
 events {
     worker_connections 1024;
 }

@@ -23,10 +23,29 @@ LETSENCRYPT_DIR="$SSL_PATH/letsencrypt"
 
 # Ensure directories exist
 mkdir -p "$SSL_PATH"
-mkdir -p "$LETSENCRYPT_DIR"cd 
+mkdir -p "$LETSENCRYPT_DIR"
+
+# Function to prompt user for overwriting files
+prompt_overwrite() {
+    local file="$1"
+    if [ -f "$file" ]; then
+        while true; do
+            read -p "File '$file' already exists. Do you want to overwrite it? (y/n): " yn
+            case $yn in
+                [Yy]* ) return 0;;
+                [Nn]* ) echo "Skipping overwrite of '$file'."; return 1;;
+                * ) echo "Please answer yes or no.";;
+            esac
+        done
+    else
+        return 0
+    fi
+}
 
 # Create minimal nginx.conf for ACME challenge
-cat <<EOL > nginx.conf
+NGINX_CONF_FILE="nginx.conf"
+if prompt_overwrite "$NGINX_CONF_FILE"; then
+    cat <<EOL > "$NGINX_CONF_FILE"
 events {
     worker_connections 1024;
 }
@@ -49,20 +68,28 @@ http {
 }
 EOL
 
-echo "Minimal ACME challenge nginx.conf generated."
+    echo "Minimal ACME challenge '$NGINX_CONF_FILE' generated."
+else
+    echo "Using existing '$NGINX_CONF_FILE'."
+fi
 
 # Create Dockerfile.nginx for a base image with Certbot
-cat <<EOL > Dockerfile.nginx
+DOCKERFILE_NGINX="Dockerfile.nginx"
+if prompt_overwrite "$DOCKERFILE_NGINX"; then
+    cat <<EOL > "$DOCKERFILE_NGINX"
 FROM nginx:latest
 RUN apt-get update -y && apt-get -y upgrade && apt-get -y install python3 python3-pip python3-venv libaugeas0
 RUN python3 -m venv /opt/certbot/ && /opt/certbot/bin/pip install --upgrade pip
 RUN /opt/certbot/bin/pip install certbot certbot-nginx && ln -s /opt/certbot/bin/certbot /usr/bin/certbot
 
 COPY nginx.conf /etc/nginx/nginx.conf
-EXPOSE $NGINX_PORT_HTTP $NGINX_PORT_HTTPS
+EXPOSE ${NGINX_PORT_HTTP} ${NGINX_PORT_HTTPS}
 EOL
 
-echo "Dockerfile for base NGINX + Certbot created."
+    echo "'$DOCKERFILE_NGINX' for base NGINX + Certbot created."
+else
+    echo "Using existing '$DOCKERFILE_NGINX'."
+fi
 
 # Ensure the Docker network exists
 echo "Ensuring Docker network 'vw-network-cluster' exists..."

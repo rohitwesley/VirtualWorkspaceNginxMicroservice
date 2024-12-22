@@ -4,6 +4,19 @@
 
 set -e
 
+# Function to prompt the user for overwriting files
+prompt_overwrite() {
+    local file=$1
+    while true; do
+        read -p "File '$file' already exists. Do you want to overwrite it? (y/n): " yn
+        case $yn in
+            [Yy]* ) return 0;;  # User chose to overwrite
+            [Nn]* ) return 1;;  # User chose not to overwrite
+            * ) echo "Please answer yes (y) or no (n).";;
+        esac
+    done
+}
+
 # Load environment variables from .env file
 set -a
 source .env
@@ -19,8 +32,18 @@ set +a
 # NGINX_STATIC_DIR="http://${LOCAL_HOST}:${STREAMS_PORT}/public/"
 NGINX_STATIC_DIR="http://${LOCAL_HOST}:${ML_PORT}/public/"
 
-# Create the nginx.conf without SSL
-cat <<EOL > nginx.conf
+# Create or overwrite nginx.conf
+if [ -f nginx.conf ]; then
+    if prompt_overwrite "nginx.conf"; then
+        echo "Overwriting existing nginx.conf..."
+    else
+        echo "Keeping existing nginx.conf. Skipping overwrite."
+        skip_nginx_conf=true
+    fi
+fi
+
+if [ "$skip_nginx_conf" != true ]; then
+    cat <<EOL > nginx.conf
 events {
     worker_connections 1024;
 }
@@ -72,22 +95,31 @@ http {
 }
 EOL
 
-echo "Final NGINX configuration without SSL created for remote server."
+    echo "Final NGINX configuration without SSL created for remote server."
+fi
 
-# Create Dockerfile.nginx if it doesn't exist
-if [ ! -f Dockerfile.nginx ]; then
+# Create or overwrite Dockerfile.nginx
+if [ -f Dockerfile.nginx ]; then
+    if prompt_overwrite "Dockerfile.nginx"; then
+        echo "Overwriting existing Dockerfile.nginx..."
+    else
+        echo "Keeping existing Dockerfile.nginx. Skipping overwrite."
+        skip_dockerfile=true
+    fi
+fi
+
+if [ "$skip_dockerfile" != true ]; then
     cat <<EOL > Dockerfile.nginx
 FROM nginx:latest
 
 # Copy the nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Expose port 80
-EXPOSE 80
+# Expose port ${NGINX_PORT_HTTP}
+EXPOSE ${NGINX_PORT_HTTP}
 EOL
-    echo "Dockerfile.nginx created."
-else
-    echo "Dockerfile.nginx already exists."
+
+    echo "Dockerfile.nginx has been created/overwritten."
 fi
 
 # Ensure the Docker network exists (assuming it's shared with main server)
