@@ -80,6 +80,11 @@ Unity/screenshots/
 *.aof
 *.aof.manifest
 
+### Rust ###
+**/target/
+**/*.rs.bk
+Cargo.lock
+
 ### Node ###
 # Logs
 logs
