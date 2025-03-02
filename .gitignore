@@ -83,7 +83,8 @@ Unity/screenshots/
 ### Rust ###
 **/target/
 **/*.rs.bk
-Cargo.lock
+# This line gets auto-added by cargo
+/target
 
 ### Node ###
 # Logs

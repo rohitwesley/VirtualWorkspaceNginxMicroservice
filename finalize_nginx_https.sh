@@ -34,8 +34,10 @@ fi
 : "${NGINX_PORT_HTTP:?Missing NGINX_PORT_HTTP}"
 : "${NGINX_PORT_HTTPS:?Missing NGINX_PORT_HTTPS}"
 : "${ML_PORT:?Missing ML_PORT}"
+: "${ML_HOST:?Missing ML_HOST}"
 : "${RUST_PORT:?Missing RUST_PORT}"
 : "${MEDIA_PORT:?Missing MEDIA_PORT}"
+: "${MEDIA_HOST:?Missing MEDIA_HOST}"
 : "${LOCAL_HOST:?Missing LOCAL_HOST}"          # Added validation for LOCAL_HOST
 : "${DOMAIN_SERVERID:?Missing DOMAIN_SERVERID}"# Ensured DOMAIN_SERVERID is validated
 
@@ -86,7 +88,7 @@ http {
         
         # Reverse proxy for Media API
         location /${DOMAIN_SERVERID}/media/ {
-            proxy_pass http://${LOCAL_HOST}:${MEDIA_PORT}/;
+            proxy_pass http://${MEDIA_HOST}:${MEDIA_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -99,7 +101,7 @@ http {
         
         # Reverse proxy for ML API
         location /${DOMAIN_SERVERID}/ml/ {
-            proxy_pass http://${LOCAL_HOST}:${ML_PORT}/;
+            proxy_pass http://${ML_HOST}:${ML_PORT}/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -114,10 +116,8 @@ EOL
 echo "Final NGINX configuration with HTTPS and local reverse proxies created."
 
 # Restart NGINX to apply final config
-# docker compose up -d --build
 docker compose down
-docker compose build --no-cache
-docker compose up --force-recreate -d
+docker compose up -d --build
 docker compose restart nginx
 
 echo "Nginx restarted with final HTTPS configuration."
